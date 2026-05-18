@@ -1,0 +1,50 @@
+# Entornos y secretos
+.env
+*.env
+.env.*
+*.pem
+*.key
+*.pub
+id_rsa
+id_rsa.pub
+*.ovpn
+*.crt
+*.csr
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+
+# Docker / datos persistentes
+**/data/
+**/logs/
+**/tmp/
+**/cache/
+*.log
+
+# Imágenes de VM
+*.qcow2
+*.img
+*.iso
+*.vdi
+*.vmdk
+
+# Base de datos / backups
+*.sql
+*.db
+*.sqlite
+*.dump
+*.bak
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

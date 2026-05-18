@@ -1,0 +1,128 @@
+name: pucp-cloud
+
+services:
+  gateway:
+    build: ./gateway
+    container_name: pucp_gateway
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8500:8500"
+    depends_on:
+      auth_service:
+        condition: service_healthy
+      slice_manager:
+        condition: service_healthy
+    volumes:
+      - ./gateway/app/ui:/app/ui:ro
+      - /root/.ssh:/root/.ssh:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8500/').read()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  auth_service:
+    build: ./auth_service
+    container_name: pucp_auth
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "9001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9001/health').read()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  slice_manager:
+    build: ./slice_manager
+    container_name: pucp_slice_manager
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "9002"
+    depends_on:
+      placement_service:
+        condition: service_healthy
+      image_service:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./slice_manager/app:/app/app
+      - ./slice_manager/state:/app/state
+      - /root/.ssh:/root/.ssh:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9002/health').read()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  placement_service:
+    build: ./placement_service
+    container_name: pucp_placement
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "9003"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9003/health').read()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  image_service:
+    build: ./image_service
+    container_name: pucp_image_service
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "9004"
+    volumes:
+      - ./image_service/data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9004/health').read()"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  mariadb:
+    image: mariadb:11
+    container_name: pucp_mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./sql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -proot123 || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: pucp_redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  mariadb_data:
